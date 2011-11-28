@@ -61,6 +61,7 @@ class SimpleAsyncHTTPClient(AsyncHTTPClient):
     """
     def initialize(self, io_loop=None, max_clients=10,
                    max_simultaneous_connections=None,
+                   log_name=None,
                    hostname_mapping=None, max_buffer_size=104857600):
         """Creates a AsyncHTTPClient.
 

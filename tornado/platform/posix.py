@@ -26,15 +26,24 @@ def set_close_exec(fd):
     flags = fcntl.fcntl(fd, fcntl.F_GETFD)
     fcntl.fcntl(fd, fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
 
-def _set_nonblocking(fd):
+def set_nonblocking(fd):
     flags = fcntl.fcntl(fd, fcntl.F_GETFL)
     fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
-    
+
+def set_blocking(fd):
+    flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+    fcntl.fcntl(fd, fcntl.F_SETFL, flags & ~os.O_NONBLOCK)
+
+def set_nocloseexec(fd):
+    flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+    fcntl.fcntl(fd, fcntl.F_SETFL, flags & ~fcntl.FD_CLOEXEC)
+
+
 class Waker(interface.Waker):
     def __init__(self):
         r, w = os.pipe()
-        _set_nonblocking(r)
-        _set_nonblocking(w)
+        set_nonblocking(r)
+        set_nonblocking(w)
         set_close_exec(r)
         set_close_exec(w)
         self.reader = os.fdopen(r, "rb", 0)

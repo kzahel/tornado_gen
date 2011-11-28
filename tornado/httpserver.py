@@ -230,11 +230,12 @@ class HTTPConnection(object):
                 raise _BadRequestException("Malformed HTTP request line")
             if not version.startswith("HTTP/"):
                 raise _BadRequestException("Malformed HTTP version in HTTP Request-Line")
-            headers = httputil.HTTPHeaders.parse(data[eol:])
+            rawheaders = data[eol:]
+            headers = httputil.HTTPHeaders.parse(rawheaders)
             self._request = HTTPRequest(
                 connection=self, method=method, uri=uri, version=version,
                 headers=headers, remote_ip=self.address[0])
-
+            self._request.rawheaders = rawheaders
             content_length = headers.get("Content-Length")
             if content_length:
                 content_length = int(content_length)
@@ -244,7 +245,6 @@ class HTTPConnection(object):
                     self.stream.write(b("HTTP/1.1 100 (Continue)\r\n\r\n"))
                 self.stream.read_bytes(content_length, self._on_request_body)
                 return
-
             self.request_callback(self._request)
         except _BadRequestException, e:
             logging.info("Malformed HTTP request from %s: %s",

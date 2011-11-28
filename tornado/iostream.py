@@ -79,6 +79,7 @@ class IOStream(object):
     def __init__(self, socket, io_loop=None, max_buffer_size=104857600,
                  read_chunk_size=4096):
         self.socket = socket
+        self._extra_repr = self.socket.fileno()
         self.socket.setblocking(False)
         self.io_loop = io_loop or ioloop.IOLoop.instance()
         self.max_buffer_size = max_buffer_size
@@ -92,11 +93,15 @@ class IOStream(object):
         self._read_bytes = None
         self._read_until_close = False
         self._read_callback = None
+        self._read_failure_callback = None
         self._streaming_callback = None
+        self._buffer_grown_callback = None
         self._write_callback = None
+        self._write_failure_callback = None
         self._close_callback = None
         self._connect_callback = None
         self._connecting = False
+        self._blocking = False
         self._state = None
         self._pending_callbacks = 0
 
@@ -134,11 +139,13 @@ class IOStream(object):
         self._connect_callback = stack_context.wrap(callback)
         self._add_io_state(self.io_loop.WRITE)
 
-    def read_until_regex(self, regex, callback):
+    def read_until_regex(self, regex, callback, failure_callback=None):
         """Call callback when we read the given regex pattern."""
         assert not self._read_callback, "Already reading"
         self._read_regex = re.compile(regex)
         self._read_callback = stack_context.wrap(callback)
+        if failure_callback:
+            self._read_falirue_callback = stack_context.wrap(failure_callback)
         while True:
             # See if we've already got the data from a previous read
             if self._read_from_buffer():
@@ -150,6 +157,7 @@ class IOStream(object):
         
     def read_until(self, delimiter, callback):
         """Call callback when we read the given delimiter."""
+        assert not self._blocking
         assert not self._read_callback, "Already reading"
         self._read_delimiter = delimiter
         self._read_callback = stack_context.wrap(callback)
@@ -162,7 +170,7 @@ class IOStream(object):
                 break
         self._add_io_state(self.io_loop.READ)
 
-    def read_bytes(self, num_bytes, callback, streaming_callback=None):
+    def read_bytes(self, num_bytes, callback, streaming_callback=None, failure_callback=None):
         """Call callback when we read the given number of bytes.
 
         If a ``streaming_callback`` is given, it will be called with chunks
@@ -174,6 +182,7 @@ class IOStream(object):
         self._read_bytes = num_bytes
         self._read_callback = stack_context.wrap(callback)
         self._streaming_callback = stack_context.wrap(streaming_callback)
+        self._read_failure_callback = stack_context.wrap(failure_callback)
         while True:
             if self._read_from_buffer():
                 return
@@ -192,6 +201,7 @@ class IOStream(object):
         Subject to ``max_buffer_size`` limit from `IOStream` constructor if
         a ``streaming_callback`` is not used.
         """
+        assert not self._blocking
         assert not self._read_callback, "Already reading"
         if self.closed():
             self._run_callback(callback, self._consume(self._read_buffer_size))
@@ -201,7 +211,7 @@ class IOStream(object):
         self._streaming_callback = stack_context.wrap(streaming_callback)
         self._add_io_state(self.io_loop.READ)
 
-    def write(self, data, callback=None):
+    def write(self, data, callback=None, failure_callback=None):
         """Write the given data to this stream.
 
         If callback is given, we call it when all of the buffered write
@@ -209,6 +219,7 @@ class IOStream(object):
         previously buffered write data and an old write callback, that
         callback is simply overwritten with this new callback.
         """
+        assert not self._blocking
         assert isinstance(data, bytes_type)
         self._check_closed()
         if data:
@@ -216,6 +227,7 @@ class IOStream(object):
             # so never put empty strings in the buffer.
             self._write_buffer.append(data)
         self._write_callback = stack_context.wrap(callback)
+        self._write_failure_callback = stack_context.wrap(failure_callback)
         self._handle_write()
         if self._write_buffer:
             self._add_io_state(self.io_loop.WRITE)
@@ -239,6 +251,10 @@ class IOStream(object):
                 self._state = None
             self.socket.close()
             self.socket = None
+            if self._write_failure_callback:
+                # check if there's a write buffer and if stuff in it then run the write failure callback
+                if sum( map(len, self._write_buffer) ) > 0:
+                    self._run_callback(self._write_failure_callback)
             if self._close_callback and self._pending_callbacks == 0:
                 # if there are pending callbacks, don't run the close callback
                 # until they're done (see _maybe_add_error_handler)
@@ -386,6 +402,8 @@ class IOStream(object):
             return 0
         self._read_buffer.append(chunk)
         self._read_buffer_size += len(chunk)
+        if self._buffer_grown_callback:
+            self._buffer_grown_callback()
         if self._read_buffer_size >= self.max_buffer_size:
             logging.error("Reached maximum read buffer size")
             self.close()
@@ -407,6 +425,7 @@ class IOStream(object):
                 num_bytes = self._read_bytes
                 callback = self._read_callback
                 self._read_callback = None
+                self._read_failure_callback = None
                 self._streaming_callback = None
                 self._read_bytes = None
                 self._run_callback(callback, self._consume(num_bytes))
@@ -418,6 +437,7 @@ class IOStream(object):
                 callback = self._read_callback
                 delimiter_len = len(self._read_delimiter)
                 self._read_callback = None
+                self._read_failure_callback = None
                 self._streaming_callback = None
                 self._read_delimiter = None
                 self._run_callback(callback,
@@ -488,6 +508,8 @@ class IOStream(object):
                 else:
                     logging.warning("Write error on %d: %s",
                                     self.socket.fileno(), e)
+                    if self._write_failure_callback:
+                        self._run_callback(self._write_failure_callback)
                     self.close()
                     return
         if not self._write_buffer and self._write_callback:
@@ -636,6 +658,7 @@ class SSLIOStream(IOStream):
             # called when there is nothing to read, so we have to use
             # read() instead.
             chunk = self.socket.read(self.read_chunk_size)
+            #logging.info('data from socket %s' % [chunk])
         except ssl.SSLError, e:
             # SSLError is a subclass of socket.error, so this except
             # block must come first.

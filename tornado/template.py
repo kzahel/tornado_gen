@@ -210,10 +210,11 @@ class Template(object):
             self.compiled = compile(escape.to_unicode(self.code),
                                     "<template %s>" % self.name,
                                     "exec")
-        except Exception:
+        except Exception, e:
             formatted_code = _format_code(self.code).rstrip()
             logging.error("%s code:\n%s", self.name, formatted_code)
-            raise
+            e.error_msg = "%s code:\n%s" % (self.name, formatted_code)
+            raise e
 
     def generate(self, **kwargs):
         """Generate this template with the given arguments."""
@@ -234,9 +235,10 @@ class Template(object):
         execute = namespace["_execute"]
         try:
             return execute()
-        except Exception:
+        except Exception, e:
             formatted_code = _format_code(self.code).rstrip()
             logging.error("%s code:\n%s", self.name, formatted_code)
+            e.error_msg = "%s code:\n%s" % (self.name, formatted_code)
             raise
 
     def _generate_python(self, loader, compress_whitespace):
