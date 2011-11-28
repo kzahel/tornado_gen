@@ -84,6 +84,7 @@ class SimpleAsyncHTTPClient(AsyncHTTPClient):
         defaults to 100mb.
         """
         self.io_loop = io_loop
+        self.log_name = log_name
         self.max_clients = max_clients
         self.queue = collections.deque()
         self.active = {}

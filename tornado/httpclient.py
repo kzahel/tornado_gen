@@ -114,6 +114,8 @@ class AsyncHTTPClient(object):
     _impl_class = None
     _impl_kwargs = None
 
+    _all_instances = []
+
     @classmethod
     def _async_clients(cls):
         assert cls is not AsyncHTTPClient, "should only be called on subclasses"
@@ -142,6 +144,8 @@ class AsyncHTTPClient(object):
             instance.initialize(io_loop, max_clients, **args)
             if not force_instance:
                 impl._async_clients()[io_loop] = instance
+            if instance not in cls._all_instances:
+                cls._all_instances.append(instance)
             return instance
 
     def close(self):
