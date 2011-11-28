@@ -206,7 +206,7 @@ class HTTPRequest(object):
                  proxy_host=None, proxy_port=None, proxy_username=None,
                  proxy_password='', allow_nonstandard_methods=False,
                  validate_cert=True, ca_certs=None,
-                 allow_ipv6=None,
+                 allow_ipv6=None, log_request=True,
                  client_key=None, client_cert=None):
         """Creates an `HTTPRequest`.
 
@@ -269,6 +269,7 @@ class HTTPRequest(object):
         self.proxy_port = proxy_port
         self.proxy_username = proxy_username
         self.proxy_password = proxy_password
+        self.log_request = log_request
         self.url = url
         self.method = method
         self.headers = headers

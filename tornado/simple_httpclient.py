@@ -270,6 +270,11 @@ class _HTTPConnection(object):
         if self.request.body is not None:
             self.stream.write(self.request.body)
         self.stream.read_until_regex(b("\r?\n\r?\n"), self._on_headers)
+        if self.request.log_request:
+            logging.info("%s %s", self.request.method, self.request.url)
+        else:
+            logging.debug("%s %s", self.request.method, self.request.url)
+
 
     def _release(self):
         if self.release_callback is not None:
