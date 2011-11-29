@@ -170,7 +170,7 @@ class IOStream(object):
                 break
         self._add_io_state(self.io_loop.READ)
 
-    def read_bytes(self, num_bytes, callback, streaming_callback=None, failure_callback=None):
+    def read_bytes(self, num_bytes, callback, failure_callback=None, streaming_callback=None):
         """Call callback when we read the given number of bytes.
 
         If a ``streaming_callback`` is given, it will be called with chunks
@@ -251,6 +251,9 @@ class IOStream(object):
                 self._state = None
             self.socket.close()
             self.socket = None
+            if self._read_bytes is not None:
+                if self._read_failure_callback:
+                    self._run_callback(self._read_failure_callback)
             if self._write_failure_callback:
                 # check if there's a write buffer and if stuff in it then run the write failure callback
                 if sum( map(len, self._write_buffer) ) > 0:
