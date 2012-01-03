@@ -110,10 +110,11 @@ class SimpleAsyncHTTPClient(AsyncHTTPClient):
                 request, callback = self.queue.popleft()
                 key = object()
                 self.active[key] = (request, callback)
-                _HTTPConnection(self.io_loop, self, request,
-                                functools.partial(self._release_fetch, key),
-                                callback,
-                                self.max_buffer_size)
+                conn = _HTTPConnection(self.io_loop, self, request,
+                                       functools.partial(self._release_fetch, key),
+                                       callback,
+                                       self.max_buffer_size)
+                request.conn = conn
 
     def _release_fetch(self, key):
         del self.active[key]
@@ -274,7 +275,8 @@ class _HTTPConnection(object):
         if self.request.log_request:
             logging.info("%s %s", self.request.method, self.request.url)
         else:
-            logging.debug("%s %s", self.request.method, self.request.url)
+            #logging.debug("%s %s", self.request.method, self.request.url)
+            pass
 
 
     def _release(self):

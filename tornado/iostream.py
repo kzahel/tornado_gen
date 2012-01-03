@@ -394,8 +394,16 @@ class IOStream(object):
         error closes the socket and raises an exception.
         """
         try:
+            if False:
+                import random
+                import time
+                if not hasattr(self,'birth'):
+                    self.birth = time.time()
+                if random.random() < 0.1 and not self._connecting and time.time() - self.birth > 2:
+                    raise Exception('foo')
             chunk = self._read_from_socket()
         except socket.error, e:
+        #except Exception, e:
             # ssl.SSLError is a subclass of socket.error
             logging.warning("Read error on %d: %s",
                             self.socket.fileno(), e)

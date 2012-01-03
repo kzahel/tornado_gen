@@ -210,7 +210,7 @@ class HTTPRequest(object):
                  proxy_host=None, proxy_port=None, proxy_username=None,
                  proxy_password='', allow_nonstandard_methods=False,
                  validate_cert=True, ca_certs=None,
-                 allow_ipv6=None, log_request=True,
+                 allow_ipv6=None, log_request=False,
                  client_key=None, client_cert=None):
         """Creates an `HTTPRequest`.
 

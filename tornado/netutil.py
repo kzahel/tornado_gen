@@ -262,7 +262,11 @@ def bind_sockets(port, address=None, family=socket.AF_UNSPEC, backlog=128):
             if hasattr(socket, "IPPROTO_IPV6"):
                 sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
         sock.setblocking(0)
-        sock.bind(sockaddr)
+        try:
+            sock.bind(sockaddr)
+        except:
+            logging.error('could not bind on %s' % str(sockaddr))
+            raise
         sock.listen(backlog)
         sockets.append(sock)
     return sockets
