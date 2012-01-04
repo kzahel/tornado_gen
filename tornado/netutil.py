@@ -212,6 +212,7 @@ class TCPServer(object):
                 stream = SSLIOStream(connection, io_loop=self.io_loop)
             else:
                 stream = IOStream(connection, io_loop=self.io_loop)
+            stream._debug_info = 'TCPServer._handle_connection'
             self.handle_stream(stream, address)
         except Exception:
             logging.error("Error in connection callback", exc_info=True)

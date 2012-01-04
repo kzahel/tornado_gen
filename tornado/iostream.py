@@ -105,6 +105,21 @@ class IOStream(object):
         self._state = None
         self._pending_callbacks = 0
 
+    def __repr__(self):
+        if hasattr(self, '_debug_info'):
+            return '<%s.%s object at %s (%s)>' % (
+                self.__class__.__module__,
+                self.__class__.__name__,
+                hex(id(self)),
+                self._debug_info
+                )        
+        else:
+            return '<%s.%s object at %s>' % (
+                self.__class__.__module__,
+                self.__class__.__name__,
+                hex(id(self))
+                )        
+
     def connect(self, address, callback=None):
         """Connects the socket to a remote address without blocking.
 
