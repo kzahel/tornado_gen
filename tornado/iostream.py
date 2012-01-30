@@ -105,6 +105,9 @@ class IOStream(object):
         self._state = None
         self._pending_callbacks = 0
 
+        self._always_callback = False
+        self.error = False
+
     def __repr__(self):
         if hasattr(self, '_debug_info'):
             return '<%s.%s object at %s (%s)>' % (
@@ -150,6 +153,9 @@ class IOStream(object):
                 logging.warning("Connect error on fd %d: %s",
                                 self.socket.fileno(), e)
                 self.close()
+                if self._always_callback:
+                    self.error = True
+                    self._run_callback(stack_context.wrap(callback))
                 return
         self._connect_callback = stack_context.wrap(callback)
         self._add_io_state(self.io_loop.WRITE)
@@ -255,6 +261,20 @@ class IOStream(object):
     def close(self):
         """Close this stream."""
         if self.socket is not None:
+
+            if self._always_callback and self._write_callback:
+                callback = self._write_callback
+                self._write_callback = None
+                self.error = True
+                self._run_callback(callback)
+
+            if self._always_callback and self._read_callback and self._read_delimiter:
+                # added in this condition so that would trigger callback from stream.read_until even when socket closes...
+                callback = self._read_callback
+                self._read_callback = None
+                self.error = True
+                self._run_callback(callback, None)
+                
             if self._read_until_close:
                 callback = self._read_callback
                 self._read_callback = None
@@ -267,6 +287,10 @@ class IOStream(object):
             self.socket.close()
             self.socket = None
             if self._read_bytes is not None:
+                if self._always_callback and self._read_callback:
+                    callback = self._read_callback
+                    self._read_callback = None
+                    self._run_callback(callback, None)
                 if self._read_failure_callback:
                     self._run_callback(self._read_failure_callback)
             if self._write_failure_callback:
@@ -495,7 +519,9 @@ class IOStream(object):
             logging.warning("Connect error on fd %d: %s",
                             self.socket.fileno(), errno.errorcode[err])
             self.close()
-            return
+            self.error = True
+            if not self._always_callback:
+                return
         if self._connect_callback is not None:
             callback = self._connect_callback
             self._connect_callback = None
