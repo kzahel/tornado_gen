@@ -114,13 +114,17 @@ class SimpleAsyncHTTPClient(AsyncHTTPClient):
                                        functools.partial(self._release_fetch, key),
                                        callback,
                                        self.max_buffer_size)
-                conn.stream._debug_info = 'simple_httpclient stream'
+                if hasattr(conn,'stream'):
+                    conn.stream._debug_info = 'simple_httpclient stream'
                 request.conn = conn
 
     def _release_fetch(self, key):
-        if self.active[key][0].conn.stream and not self.active[key][0].conn.stream.closed():
-            logging.warn('closing simple_httpclient http connection')
-            self.active[key][0].conn.stream.close() # close the HTTP connection
+        if hasattr(self.active[key][0],'conn'):
+            conn = self.active[key][0].conn
+            if conn:
+                if self.active[key][0].conn.stream and not self.active[key][0].conn.stream.closed():
+                    logging.warn('closing simple_httpclient http connection')
+                    self.active[key][0].conn.stream.close() # close the HTTP connection
         del self.active[key]
         self._process_queue()
 
