@@ -101,6 +101,7 @@ class IOStream(object):
         self._close_callback = None
         self._connect_callback = None
         self._connecting = False
+        self._has_connected = False
         self._blocking = False
         self._state = None
         self._pending_callbacks = 0
@@ -527,6 +528,7 @@ class IOStream(object):
             self._connect_callback = None
             self._run_callback(callback)
         self._connecting = False
+        self._has_connected = True
 
     def _handle_write(self):
         while self._write_buffer:
