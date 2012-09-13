@@ -176,12 +176,12 @@ class WebSocketHandler(tornado.web.RequestHandler):
         """Invoked when the WebSocket is closed."""
         pass
 
-    def close(self):
+    def close(self, reason=None):
         """Closes this Web Socket.
 
         Once the close handshake is successful the socket will be closed.
         """
-        self.ws_connection.close()
+        self.ws_connection.close(reason=reason)
 
     def allow_draft76(self):
         """Override to enable support for the older "draft76" protocol.
@@ -420,7 +420,7 @@ class WebSocketProtocol76(WebSocketProtocol):
         assert isinstance(message, bytes_type)
         self.stream.write(b("\x00") + message + b("\xff"))
 
-    def close(self):
+    def close(self, reason=None):
         """Closes the WebSocket connection."""
         if not self.server_terminated:
             if not self.stream.closed():
@@ -513,6 +513,7 @@ class WebSocketProtocol13(WebSocketProtocol):
         else:
             frame += struct.pack("!BQ", 127, l)
         frame += data
+        #logging.info('write frame %s' % [frame])
         self.stream.write(frame)
 
     def write_message(self, message, binary=False):
@@ -624,6 +625,7 @@ class WebSocketProtocol13(WebSocketProtocol):
             # Binary data
             self.async_callback(self.handler.on_message)(data)
         elif opcode == 0x8:
+            logging.info('client sent close ws message')
             # Close
             self.client_terminated = True
             self.close()
@@ -636,11 +638,11 @@ class WebSocketProtocol13(WebSocketProtocol):
         else:
             self._abort()
 
-    def close(self):
+    def close(self, reason=""):
         """Closes the WebSocket connection."""
         if not self.server_terminated:
             if not self.stream.closed():
-                self._write_frame(True, 0x8, b(""))
+                self._write_frame(True, 0x8, b(reason))
             self.server_terminated = True
         if self.client_terminated:
             if self._waiting is not None:

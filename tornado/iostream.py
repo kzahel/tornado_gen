@@ -151,10 +151,11 @@ class IOStream(object):
             # localhost, so handle them the same way as an error
             # reported later in _handle_connect.
             if e.args[0] not in (errno.EINPROGRESS, errno.EWOULDBLOCK):
-                logging.warning("Connect error on fd %d: %s",
+                logging.info("Connect error on fd %d: %s",
                                 self.socket.fileno(), e)
                 self.close()
                 if self._always_callback:
+                    logging.error('always callback callin')
                     self.error = True
                     self._run_callback(stack_context.wrap(callback))
                 return
@@ -167,7 +168,7 @@ class IOStream(object):
         self._read_regex = re.compile(regex)
         self._read_callback = stack_context.wrap(callback)
         if failure_callback:
-            self._read_falirue_callback = stack_context.wrap(failure_callback)
+            self._read_failure_callback = stack_context.wrap(failure_callback)
         while True:
             # See if we've already got the data from a previous read
             if self._read_from_buffer():
