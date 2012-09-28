@@ -289,7 +289,7 @@ class WebSocketProtocol76(WebSocketProtocol):
         try:
             self._handle_websocket_headers()
         except ValueError:
-            logging.debug("Malformed WebSocket request received")
+            logging.error("Malformed WebSocket request received")
             self._abort()
             return
 
@@ -618,6 +618,7 @@ class WebSocketProtocol13(WebSocketProtocol):
             try:
                 decoded = data.decode("utf-8")
             except UnicodeDecodeError:
+                logging.error("unicode decode error")
                 self._abort()
                 return
             self.async_callback(self.handler.on_message)(decoded)
@@ -625,7 +626,7 @@ class WebSocketProtocol13(WebSocketProtocol):
             # Binary data
             self.async_callback(self.handler.on_message)(data)
         elif opcode == 0x8:
-            logging.info('client sent close ws message')
+            #logging.info('client sent close ws message')
             # Close
             self.client_terminated = True
             self.close()
@@ -642,7 +643,7 @@ class WebSocketProtocol13(WebSocketProtocol):
         """Closes the WebSocket connection."""
         if not self.server_terminated:
             if not self.stream.closed():
-                self._write_frame(True, 0x8, b(reason))
+                self._write_frame(True, 0x8, b("  ") + b(reason))
             self.server_terminated = True
         if self.client_terminated:
             if self._waiting is not None:
