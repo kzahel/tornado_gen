@@ -443,6 +443,8 @@ class IOStream(object):
                 if random.random() < 0.1 and not self._connecting and time.time() - self.birth > 2:
                     raise Exception('foo')
             chunk = self._read_from_socket()
+            #if chunk:
+            #    logging.info('read from sock %s' % len(chunk))
         except socket.error, e:
         #except Exception, e:
             # ssl.SSLError is a subclass of socket.error
@@ -452,6 +454,7 @@ class IOStream(object):
             raise
         if chunk is None:
             return 0
+        #logging.info('got chunk %s' % [chunk])
         self._read_buffer.append(chunk)
         self._read_buffer_size += len(chunk)
         if self._buffer_grown_callback:
@@ -626,6 +629,9 @@ class IOStream(object):
             self._state = self._state | state
             self.io_loop.update_handler(self.socket.fileno(), self._state)
 
+    def _clear_io_state(self):
+        self._state = 0
+        self.io_loop.update_handler(self.socket.fileno(), self._state)
 
 class SSLIOStream(IOStream):
     """A utility class to write to and read from a non-blocking SSL socket.
