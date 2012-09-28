@@ -314,9 +314,14 @@ class IOLoop(object):
                     else:
                         logging.error("Exception in I/O handler for fd %d",
                                       fd, exc_info=True)
+                        import autoreload
+                        autoreload._reload()
                 except Exception:
                     logging.error("Exception in I/O handler for fd %d",
                                   fd, exc_info=True)
+                    import autoreload
+                    autoreload._reload()
+
         # reset the stopped flag so another start/stop pair can be issued
         self._stopped = False
         if self._blocking_signal_threshold is not None:
